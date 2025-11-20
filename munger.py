@@ -58,7 +58,6 @@ def main():
         print("Unexpected error:", e)
 
 
-
     csvfile1 = open('./data/shipping_data_1.csv', newline="") 
     shipping_reader_1 = csv.reader(csvfile1)
     header1 = next(shipping_reader_1)   # Skip header row
@@ -70,33 +69,57 @@ def main():
 
 
     counts = defaultdict(int) # number of duplicates 
-    prev_tuple = tuple()
+    prev1_tuple = tuple()
+    prev2_tuple = tuple()
+    entry = []
     for row in shipping_reader_1: # iterate each row through shipping_data_1  
-        row_tuple = tuple(row)
+        row1_tuple = tuple(row)
         
-        if len(prev_tuple) == 0: # first iteration
-            prev_tuple = row_tuple
-            counts[row_tuple] = 1 
+        if len(prev1_tuple) == 0: # first iteration
+            prev1_tuple = row1_tuple
+            counts[row1_tuple] = 1 
             continue
 
 
-        if (row_tuple == prev_tuple):
-            counts[prev_tuple] += 1              
+        if (row1_tuple == prev1_tuple):
+            counts[prev1_tuple] += 1              
         else:
-            for row2 in shipping_reader_2:
-                if row2[0] == row[0]:                       
+            if len(prev2_tuple) != 0: # second iteration
+                if prev2_tuple[0] == prev1_tuple[0]:    
                     entry = [
-                        row2[1], # origin_warehouse
-                        row2[2], # destination_store
-                        row[1], # product
-                        row[2], # on_time
-                        counts[prev_tuple], # quantity
-                        row2[3] # driver_identifier
+                        prev2_tuple[1], # origin_warehouse
+                        prev2_tuple[2], # destination_store
+                        prev1_tuple[1], # product
+                        prev1_tuple[2], # on_time
+                        counts[prev1_tuple], # quantity
+                        prev2_tuple[3] # driver_identifier
+                    ] # Constructing the entry  each time we find a match
+                    
+                    counts[row1_tuple] = 1  # Reset count for new entry
+                    prev1_tuple = row1_tuple
+                    insert_row(shipment_connector, entry)
+                    # print(entry)
+                    continue
+            for row2 in shipping_reader_2:
+                row2_tuple = tuple(row2)
+
+                if row2_tuple[0] == prev1_tuple[0]:                       
+                    entry = [
+                        row2_tuple[1], # origin_warehouse
+                        row2_tuple[2], # destination_store
+                        prev1_tuple[1], # product
+                        prev1_tuple[2], # on_time
+                        counts[prev1_tuple], # quantity
+                        row2_tuple[3] # driver_identifier
                     ] # Constructing the entry  each time we find a match
                        
-                    counts[row_tuple] = 1  # Reset count for new entry
-                    break
+                    counts[row1_tuple] = 1  # Reset count for new entry
+                    prev1_tuple = row1_tuple
+                    prev2_tuple = row2_tuple
+                    break              
+
             insert_row(shipment_connector, entry)
+            # print(entry)
       
 
     shipment_connector.commit()
